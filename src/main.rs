@@ -5,64 +5,72 @@ extern crate log;
 extern crate metaphor = "libmetaphor";
 extern crate sync;
 
-use sync::Arc;
-use sync::raw::RwLock;
-
-use std::io::fs;
-use std::io;
-
-use std::io::{TcpListener, TcpStream};
-use std::io::{Acceptor, Listener};
+use std::sync::Arc;
+use RwLock = std::sync::RWLock;
 
 use metaphor::repository::find_repo_root;
 use metaphor::tree::tree_diff;
 use metaphor::{Database, Tag, Patch, TrivialDb};
 use metaphor::diff::PatienceLinePatch;
 use metaphor::{ToDisk, Object, ID, FlatTree, Tree};
+use metaphor::rpc;
+
+use metaphor::rpc::{CloneContext, ChangesContext, ChildrenContext,
+	                  PushContext, TagContext, UntagContext, TaggedContext};
+use RpcID = metaphor::rpc::ID;
+use RpcCommit = metaphor::rpc::Commit;
+use RpcChangeSeq = metaphor::rpc::ChangeSeq;
+use RpcChange = metaphor::rpc::Change;
+use RpcPatch = metaphor::rpc::Patch;
 
 pub struct RepoToken;
 
 
 
-fn handle_client(mut stream: TcpStream, db_lock: Arc<RwLock<TrivialDb>>) {
-	debug!("got client");
-	let call = stream.read_le_u64().unwrap();
-	match call {
-		1 => {
-			// Clone
-			let path_byte_length = stream.read_le_u64().unwrap();
-			let path_bytes = stream.read_exact(path_byte_length).unwrap();
+pub struct RepoServerImpl;
 
-		},
-		2 => {
-			// Push
-		},
-		3 => {
-			// Pull
-		},
-		_ => {
-			error!("Didn't understand message");
-		}
+impl RepoServerImpl {
+	pub fn new() -> RepoServerImpl {
+		RepoServerImpl
 	}
 }
 
+impl rpc::Server for RepoServerImpl {
+	fn clone(&mut self, mut context: CloneContext) {
+		let (params, results) = context.get();
+		unimplemented!();
+		context.done();
+	}
+
+	fn changes(&mut self, mut context: ChangesContext) {
+		unimplemented!();
+	}
+
+	fn children(&mut self, mut context: ChildrenContext) {
+		unimplemented!();
+	}
+
+	fn push(&mut self, mut context: PushContext) {
+		unimplemented!();
+	}
+
+	fn tag(&mut self, mut context: TagContext) {
+		unimplemented!();
+	}
+
+	fn untag(&mut self, mut context: UntagContext) {
+		unimplemented!();
+	}
+
+	fn tagged(&mut self, mut context: TaggedContext) {
+		unimplemented!();
+	}
+}
 
 fn main() {
 	let mut repo_lock = Arc::new(RwLock::new(TrivialDb::new(&Path::new(".met"))));
 
+	let repo_server = rpc::repository_server("127.0.0.1:8080", box RepoServerImpl::new()).unwrap();
 
-	debug!("starting server");
-	let listener = TcpListener::bind("127.0.0.1", 8080);
-	let mut acceptor = listener.listen();
-
-	for stream in acceptor.incoming() {
-		match stream {
-			Err(e) => { error!("failed to connect to client"); },
-			Ok(stream) => spawn(proc() {
-				handle_client(stream, repo_lock.clone());
-			}),
-		}
-	}
-
-	drop(acceptor);
+	repo_server.serve();
 }
